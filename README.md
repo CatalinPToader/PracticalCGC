@@ -13,3 +13,9 @@ Please organize into folders relating to what the scripts cover.
 ## LXC Containers
     ./create_bg.sh -- Creates a lxc container in the background (using daemon)
     ./connect_container.sh -- !Attaches! to a container to bypass login requirements.
+
+## KVM
+    ./kvm_create.sh -- Creates a new KVM machine based on an existing image
+    ./kvm_start.sh -- Starts a machine
+    ./kvm_bg_vnc.sh -- Starts a machine in background, and opens vnc for connections
+    SSH_WHAT_DO -- Instructions for if they ask for ssh or dumb stuff

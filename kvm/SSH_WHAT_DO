@@ -1,0 +1,7 @@
+1. Complain (the lab never covered it)
+2. Complain harder (the lab didn't cover networking)
+3. Ask if you can use virt-manager
+4a. Use that
+5a. Complain again, but you are done
+4b. Leave for last
+5b. Use google to find how to set up bridges and network in QEMU (specifically as kvm is actually running qemu underneath and won't show up in virsh or use that)
