@@ -1,0 +1,122 @@
+LOAD BALANCING
+
+Execute lab intro
+
+3 VMs spawned:
+192.168.100.71 - student@load-balancer
+192.168.100.72 - student@real-server-1
+192.168.100.73 - student@real-server-2
+
+All have Virtual IP - 192.168.100.251
+
+LVS-DR (Direct Routing)
+
+// Run command below commands on student@load-balancer aka director
+sudo apt update
+sudo apt install ipvsadm
+sudo ip addr add dev eth0 192.168.100.251/24 label eth0:1 - add VIP 
+sudo ipvsadm -A -t 192.168.100.251:80 // Config HTTP as a virtual service
+
+// Adding the real servers
+sudo ipvsadm -a -t 192.168.100.251:80 -r 192.168.100.72:80 -g // -g = Direct Routing
+sudo ipvsadm -a -t 192.168.100.251:80 -r 192.168.100.73:80 -g
+
+// Bellow command is executed on real-server-1 and real-server-2 and any other real server
+sudo apt update
+sudo apt install iptables
+sudo iptables -t nat -A PREROUTING -d 192.168.100.251 -j REDIRECT
+
+// Test: From host machine (openstack machine) execute the below command
+curl 192.168.100.251
+
+// From load-balancer execute the below commands to add connection threshold
+sudo ipvsadm -e -t 192.168.100.251:80 -r 192.168.100.72:80 -g -x 3
+sudo ipvsadm -e -t 192.168.100.251:80 -r 192.168.100.73:80 -g -x 3
+
+// Test: From openstack machine execute below command
+// You will see 3 successful attempts on each server and after that only connection refused
+for (( ; ; )) do curl 192.168.100.251 done;
+
+// In load-balancer you can use the below command to see list of connections that are managed by the virtual server
+sudo ipvsadm -l -c
+
+// Cleanup:
+	// load-balancer machine:
+	sudo ipvsadm -D -t 192.168.100.251:80
+
+	// real-server-1 and real-server-2:
+	sudo iptables -t nat -F
+
+-------------------------------------------------------------------------------------------
+
+LVS-TUN (tunneling)
+
+// load-balancer:
+sudo ipvsadm -A -t 192.168.100.251:80
+
+// Adding the real servers, still on load-balancer
+sudo ipvsadm -a -t 192.168.100.251:80 -r 192.168.100.72:80 -i
+sudo ipvsadm -a -t 192.168.100.251:80 -r 192.168.100.73:80 -i
+
+// real-server-1 and real-server-2 - creating IP-IP tunnel interfaces
+sudo ip tunnel add tun0 mode ipip local 192.168.100.72 (for sv 1)
+sudo ip tunnel add tun0 mode ipip local 192.168.100.73 (for sv 2)
+
+// adding director's IP address
+sudo ip address add 192.168.100.251/24 dev tun0 metric 32678 (on both real servers)
+
+// starting interfaces
+sudo ip link set tun0 up (on both real servers)
+
+// Cleanup
+	// load-balancer machine:
+	sudo ipvsadm -D -t 192.168.100.251:80
+
+	// real-server-1 and real-server-2
+	sudo ip tunnel del tun0
+
+-------------------------------------------------------------------------------------------
+
+HAProxy
+
+// load-balancer commands:
+
+sudo apt update
+sudo apt install haproxy
+sudo systemctl enable --now haproxy
+// append to /etc/haproxy/haproxy.cfg the following:
+
+frontend www
+        bind *:80
+        default_backend realservers
+
+backend realservers
+        mode http
+        balance roundrobin
+        server realserver-1 192.168.100.72:80
+        server realserver-2 192.168.100.73:80
+
+// Restart the service:
+sudo systemctl restart --now haproxy
+
+HAProxy Health checks
+
+// Basically the /etc/haproxy/haproxy.cfg backend part needs to look like this:
+
+backend realservers
+        mode http
+        balance roundrobin
+        option httpchk
+        http-check send meth GET
+        server realserver-1 192.168.100.72:80 check inter 3000
+        server realserver-2 192.168.100.73:80 check inter 3000
+
+// Restart the service:
+sudo systemctl restart --now haproxy
+
+// on real-server-1 stop nginx server
+sudo systemctl stop nginx
+
+// check haproxy logs in load-balancer and how new requests are directed
+sudo journalctl -u haproxy -n 100 --no-pager
+
