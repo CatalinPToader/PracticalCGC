@@ -1,0 +1,17 @@
+The script takes 3 parameters, master_ip, slave_ip and domain.
+
+For example, for the task
+"Configure the host with IP address 192.168.1.1 as a DNS master server and the host with IP address 192.168.1.2 as a DNS slave server."
+"Configure a DNS server on the master to resolve queries for the hogwarts.hp.com domain with its own IP"
+
+you can run:
+./setup_dns 192.168.1.1 192.168.1.2 howarts.hp.com
+
+check by running on the DNS master VM:
+host hogwarts.hp.com localhost
+
+
+The script assumes that the VMs are reachable by SSH at student@<ip>. Change the username if needed.
+Each SSH call will request the user's password (in the default VM configuration, it should be "student")
+
+Check the output for errors. The user to which you connect by SSH should have sudo privileges (password may be requested?)
