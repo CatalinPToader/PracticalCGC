@@ -1,0 +1,203 @@
+Virtualization in Cloud - Authentication
+
+
+// Go to: https://cloud.grid.pub.ro/project/ -> Project -> API Access -> Download OpenStack RC File -> OpenStack RC File
+
+// You need to somehow copy the file to the fep.grid.pub.ro in the home directory
+
+// Delete these lines:
+
+# With Keystone you pass the keystone password.
+echo "Please enter your OpenStack Password for project $OS_PROJECT_NAME as user $OS_USERNAME: "
+read -sr OS_PASSWORD_INPUT
+export OS_PASSWORD=$OS_PASSWORD_INPUT
+
+// Replace them with these lines:
+
+unset OS_TOKEN
+export OS_TOKEN=$(openstack token issue --os-auth-type=password -f value -c id)
+export OS_AUTH_TYPE="token"
+unset OS_USER_DOMAIN_NAME
+
+// Execute the below command in fep machine and enter your moodle/openstack password
+source scgc_prj-openrc.sh
+
+// View catalog of installed services:
+openstack catalog list
+
+
+Token management
+
+// Generate token, remember the ID of it
+
+openstack token issue
+
+// Revoke token
+
+openstack token revoke ID
+
+
+Resource management
+
+// List available images:
+
+openstack image list
+
+// Show further details about the image
+
+openstack image show xxxxxxxx-yyyy-zzzz-tttt-xxxxxxxxxx12
+
+Similar to other parameters: flavor, keypair, network (net), security group
+
+
+Booting an instance - pain in the ass
+	image: you need to get the ID with previous command, 
+		for Ubuntu 16.04 Xenial: 0282fc93-9239-4435-843b-e231e3d25754
+	nic net-id: for vlan9: 4a73de7b-b86b-419f-91e8-7a91c01b1e5b
+
+// Example of command (MODIFY PARAMETERS ACCORDINGLY)
+openstack server create --flavor m1.tiny \
+ --image 0282fc93-9239-4435-843b-e231e3d25754 \
+ --nic net-id=4a73de7b-b86b-419f-91e8-7a91c01b1e5b \
+ --security-group default \
+ --key-name id_fep \
+ scgc-vm
+
+// Note down ID: 
+b1f95eca-2a1d-408b-b225-b2d713049b95
+
+
+Instance lifecycle
+
+// List all VMs instances
+openstack server list
+
+// Get details about scgc-vm:
+openstack server show b1f95eca-2a1d-408b-b225-b2d713049b95
+
+// Start/Stop/Delete instance
+openstack server start/stop/delete b1f95eca-2a1d-408b-b225-b2d713049b95
+
+
+Initial configuration
+
+// Create a script in fep.grid.pub.ro home folder containing (this will be executed when instance runs for the first time), I named the script day0.txt:
+
+#!/bin/bash
+echo test > /tmp/test.txt
+
+// Create instance
+openstack server create --flavor m1.tiny \
+ --image 0282fc93-9239-4435-843b-e231e3d25754 \
+ --nic net-id=4a73de7b-b86b-419f-91e8-7a91c01b1e5b \
+ --security-group default \
+ --key-name id_fep \
+ --user-data day0.txt \
+ scgc-vm
+
+// SSH into scgc-vm to check that it worked (Ubuntu Xenial shit does not work to SSH in)
+
+
+Networking - Topology of 2 VMs connected through private network
+
+// Network creation - replace user.name
+openstack net create user.name-network
+
+// Create subnet - replace user.name and X with a number 0-255
+openstack subnet create user.name-subnet --network user.name-network --subnet-range 172.16.X.0/24
+
+// Boot 2 instances - you need to add another nic net-id with the ID of the new network
+openstack server create --flavor m1.large \
+ --image 105c0e58-aa2e-450b-b761-8f86e02f095a \
+ --nic net-id=4a73de7b-b86b-419f-91e8-7a91c01b1e5b \
+ --nic net-id=f3448cb5-e140-4a1d-af44-faed1e767c7a \
+ --security-group default \
+ --key-name id_fep \
+ scgc-vm-1
+
+openstack server create --flavor m1.large \
+ --image 105c0e58-aa2e-450b-b761-8f86e02f095a \
+ --nic net-id=4a73de7b-b86b-419f-91e8-7a91c01b1e5b \
+ --nic net-id=f3448cb5-e140-4a1d-af44-faed1e767c7a \
+ --security-group default \
+ --key-name id_fep \
+ scgc-vm-2
+
+// Test connectivity - on both VMs run the commands below, eth1 may differ - THIS FREEZES THE VMs IDK WHY:
+sudo dhclient eth1
+
+
+Orchestration:
+
+// Go to: https://cloud.grid.pub.ro/project/ -> Project -> Orchestration -> Stacks -> Launch Stack
+// Template Source: Direct Input then paste the below content to launch VMs with custom apache2
+// Click next, give it a name, type in password and that's it in theory
+// The params part does not work unfortunately idk why
+
+heat_template_version: 2013-05-23
+
+resources:
+  vm1:
+    type: OS::Nova::Server
+    properties:
+      name: cdragomir-vm1
+      image: 105c0e58-aa2e-450b-b761-8f86e02f095a
+      flavor: m1.large
+      key_name: id_fep
+      networks:
+      - network: vlan9
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash
+            apt-get update
+            apt-get install -y apache2
+            systemctl start apache2
+            systemctl enable apache2
+            echo "This is $SERVER_NAME" > /var/www/html/index.html
+          params:
+            $SERVER_NAME: { get_attr: [vm1, name] }
+
+  vm2:
+    type: OS::Nova::Server
+    properties:
+      name: cdragomir-vm2
+      image: 105c0e58-aa2e-450b-b761-8f86e02f095a
+      flavor: m1.large
+      key_name: id_fep
+      networks:
+      - network: vlan9
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash
+            apt-get update
+            apt-get install -y apache2
+            systemctl start apache2
+            systemctl enable apache2
+            echo "$This is SERVER_NAME" > /var/www/html/index.html
+          params:
+            $SERVER_NAME: { get_attr: [vm2, name] }
+
+  vm3:
+    type: OS::Nova::Server
+    properties:
+      name: cdragomir-vm3
+      image: 105c0e58-aa2e-450b-b761-8f86e02f095a
+      flavor: m1.large
+      key_name: id_fep
+      networks:
+      - network: vlan9
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash
+            apt-get update
+            apt-get install -y apache2
+            systemctl start apache2
+            systemctl enable apache2
+            echo "This is $SERVER_NAME" > /var/www/html/index.html
+          params:
+            $SERVER_NAME: { get_attr: [vm3, name] }
+
+
