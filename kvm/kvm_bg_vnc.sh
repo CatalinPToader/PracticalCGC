@@ -4,4 +4,4 @@ read -p "Number of VCPUs (e.g 2): " $CPU
 read -p "VNC port (e.g 1): " $VNC
 
 sudo kvm -hda $IMG -m $RAM -smp $CPU -vnc :$VNC --daemonize
-echo "Connect to vnc using localhost:1 or 127.0.0.1:1"
+echo "Connect to vnc using localhost:$VNC or 127.0.0.1:$VNC"
