@@ -1,0 +1,23 @@
+version: "3.3"
+
+services:
+  con1:
+    image: debian
+    networks:
+      - test-net
+    entrypoint: sleep 100
+
+  con2:
+    depends_on:
+      - con1
+    image: debian
+    networks:
+      - test-net
+    ports:
+      - "8000:80"
+    environment:
+      VAR1: test
+    entrypoint: sleep 100
+
+networks:
+    test-net:
