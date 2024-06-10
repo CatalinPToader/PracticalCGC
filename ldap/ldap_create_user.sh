@@ -1,5 +1,5 @@
 read -p "Username: " USR
-read -p "UID (e.g 1001): " UID
+read -p "UID (e.g 1001): " UUID
 read -p "GID (e.g 1001): " GID
 homedir=/home/$USR
 echo "Home will be: $homedir"
@@ -20,14 +20,14 @@ objectClass: top
 cn: $USR
 sn: $USR
 uid: $USR
-uidNumber: $UID
+uidNumber: $UUID
 gidNumber: $GID
 homeDirectory: $homedir
 loginShell: /bin/bash
 EOF
 
 # Add the user to the LDAP directory
-ldapadd -x -D "$ROOT_DN" -w "$ROOT_PW" -f $LDIF_FILE
+ldapadd -x -D "$DM" -w "$PASS" -f $LDIF_FILE
 
 # Clean up
 rm -f $LDIF_FILE
