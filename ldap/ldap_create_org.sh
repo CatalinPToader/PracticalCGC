@@ -13,6 +13,7 @@ LDIF_FILE="/tmp/add_ou.ldif"
 
 cat <<EOF > $LDIF_FILE
 dn: ou=$OU_NAME,$BASE_DN
+objectClass: top
 objectClass: organizationalUnit
 ou: $OU_NAME
 EOF

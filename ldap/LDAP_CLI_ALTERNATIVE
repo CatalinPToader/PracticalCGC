@@ -1,0 +1,15 @@
+There is an alternative to cockpit
+
+dsidm
+
+Example usage:
+
+`sudo dsidm -b $BASE_DN $INSTANCE_NAME user create
+Enter value for uid : tu
+Enter value for cn : tu
+Enter value for displayName : tu
+Enter value for uidNumber : 1003
+Enter value for gidNumber : 1003
+Enter value for homeDirectory : /home/tu
+Successfully created tu`
+
