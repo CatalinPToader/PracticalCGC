@@ -1,0 +1,5 @@
+1. Install 389ds
+2. Use `sudo dscreate interactive`
+3. FQDN = Hostname (?)
+4. Convertire pentru DN: eu.example.com -> dc=eu,dc=example,dc=com
+5. Parola pentru Directory Manager > 8 chars

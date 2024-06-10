@@ -19,3 +19,9 @@ Please organize into folders relating to what the scripts cover.
     ./kvm_start.sh -- Starts a machine
     ./kvm_bg_vnc.sh -- Starts a machine in background, and opens vnc for connections
     SSH_WHAT_DO -- Instructions for if they ask for ssh or dumb stuff
+
+## LDAP
+    LDAP_Creation -- Instructions for getting ldap running, use the interactive creation tbh.
+    ./ldap_create_org.sh -- Script to create an org, for managing users laters (no guarantee it works)
+    ./ldap_create_user.sh -- Script to add a POSIX user (no guarantee it works)
+    Maybe try using cockpit tbh
